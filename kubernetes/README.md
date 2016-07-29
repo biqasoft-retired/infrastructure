@@ -1,5 +1,7 @@
 ## kubernetes
 
+`http://kubernetes.io/docs/getting-started-guides/scratch/`
+
 ```bash
 etcdctl set /coreos.com/network/config '{ "Network": "172.16.0.0/16", "Backend": {"Type": "vxlan"} }'
 
