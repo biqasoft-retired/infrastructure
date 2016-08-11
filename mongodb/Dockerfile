@@ -23,7 +23,7 @@ RUN apt-key adv --keyserver ha.pool.sks-keyservers.net --recv-keys 492EAFE8CD016
 RUN sudo apt-key adv --keyserver keyserver.ubuntu.com --recv EA312927
 
 ENV MONGO_MAJOR 3.2
-ENV MONGO_VERSION 3.2.5
+ENV MONGO_VERSION 3.2.8
 
 RUN echo "deb http://repo.mongodb.org/apt/debian wheezy/mongodb-org/$MONGO_MAJOR main" > /etc/apt/sources.list.d/mongodb-org.list
 
