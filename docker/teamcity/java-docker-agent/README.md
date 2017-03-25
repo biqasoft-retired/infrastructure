@@ -1,0 +1,1 @@
+teamcity agent with docker cli(without dockerrunc etc; not for docker-in-docker;) 
