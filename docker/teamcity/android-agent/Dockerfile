@@ -13,6 +13,9 @@ ENV ANDROID_SDK_TOOLS=25.2.3
 ENV ANDROID_HOME=/android
 # download android sdk
 # install all sdk packages
+
+RUN wget https://github.com/tcnksm/ghr/releases/download/v0.5.4/ghr_v0.5.4_linux_amd64.zip && unzip ghr_v0.5.4_linux_amd64.zip && cp ghr /bin && chmod +x /bin/ghr && wget https://github.com/patrickfav/uber-apk-signer/releases/download/v0.7.0/uber-apk-signer-0.7.0.jar && cp uber-apk-signer-0.7.0.jar /bin
+
 RUN mkdir /android && cd android && apt-get update && apt-get install -y wget tar unzip zsh lib32stdc++6 lib32z1 curl jq && \
 	wget https://dl.google.com/android/repository/tools_r${ANDROID_SDK_TOOLS}-linux.zip && \
 	unzip tools_r${ANDROID_SDK_TOOLS}-linux.zip && rm tools_r${ANDROID_SDK_TOOLS}-linux.zip && \ 

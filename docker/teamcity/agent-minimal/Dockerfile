@@ -1,5 +1,7 @@
 FROM openjdk:8-jdk
 
+RUN apt-get update && apt-get install xmlstarlet -y
+
 VOLUME /data/teamcity_agent/conf
 ENV CONFIG_FILE /data/teamcity_agent/conf/buildAgent.properties
 LABEL dockerImage.teamcity.version="latest" \
