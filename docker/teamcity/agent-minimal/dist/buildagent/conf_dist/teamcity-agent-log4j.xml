@@ -30,7 +30,7 @@ You might also need to increase the number of files to store to prevent logs fro
   </appender>
 
   <appender name="ROLL" class="jetbrains.buildServer.util.TCRollingFileAppender">
-    <param name="file" value="${teamcity_logs}teamcity-agent.log"/>
+    <param name="file" value="${teamcity_logs}/teamcity-agent.log"/>
     <param name="maxBackupIndex" value="3"/>
     <!--REPLACE PREVIOUS LINE WITH UNCOMMENTED LINE TO STORE MORE LOGS-->
     <!-- <param name="maxBackupIndex" value="20"/> -->
@@ -55,7 +55,7 @@ You might also need to increase the number of files to store to prevent logs fro
 
 
   <appender name="SVN.LOG" class="jetbrains.buildServer.util.TCRollingFileAppender">
-    <param name="file" value="${teamcity_logs}teamcity-svn.log"/>
+    <param name="file" value="${teamcity_logs}/teamcity-svn.log"/>
 
     <layout class="jetbrains.buildServer.log.MessagesFilterLayout">
       <param name="ConversionPattern" value="[%d] %6p - %30.30c - %m %n"/>
@@ -63,7 +63,7 @@ You might also need to increase the number of files to store to prevent logs fro
   </appender>
 
   <appender name="ROLL.VCS" class="jetbrains.buildServer.util.TCRollingFileAppender">
-    <param name="file" value="${teamcity_logs}teamcity-vcs.log"/>
+    <param name="file" value="${teamcity_logs}/teamcity-vcs.log"/>
     <param name="maxBackupIndex" value="2"/>
     <!--REPLACE PREVIOUS LINE WITH UNCOMMENTED LINE TO STORE MORE LOGS-->
     <!-- <param name="maxBackupIndex" value="20"/> -->
@@ -78,7 +78,7 @@ You might also need to increase the number of files to store to prevent logs fro
   </appender>
 
   <appender name="ROLL.XMLRPC" class="jetbrains.buildServer.util.TCRollingFileAppender">
-    <param name="file" value="${teamcity_logs}teamcity-xmlrpc.log"/>
+    <param name="file" value="${teamcity_logs}/teamcity-xmlrpc.log"/>
     <param name="maxBackupIndex" value="3"/>
     <!--REPLACE PREVIOUS LINE WITH UNCOMMENTED LINE TO STORE MORE LOGS-->
     <!-- <param name="maxBackupIndex" value="20"/> -->
@@ -89,13 +89,13 @@ You might also need to increase the number of files to store to prevent logs fro
   </appender>
 
   <appender name="ROLL.BUILD" class="jetbrains.buildServer.util.TCRollingFileAppender">
-    <param name="file" value="${teamcity_logs}teamcity-build.log"/>
+    <param name="file" value="${teamcity_logs}/teamcity-build.log"/>
     <param name="maxBackupIndex" value="1"/>
     <!--REPLACE PREVIOUS LINE WITH UNCOMMENTED LINE TO STORE MORE LOGS-->
     <!-- <param name="maxBackupIndex" value="20"/> -->
 
     <layout class="jetbrains.buildServer.log.MessagesFilterLayout">
-      <param name="ConversionPattern" value="[%d] %c{1} - %m%n"/>
+      <param name="ConversionPattern" value="[%d] %6p - %m %n"/>
     </layout>
   </appender>
 
@@ -117,11 +117,11 @@ You might also need to increase the number of files to store to prevent logs fro
     <appender-ref ref="CONSOLE-INFO"/>
   </category>
 
-  <category name="teamcity.out">
+  <category name="teamcity.out" additivity="false">
     <appender-ref ref="ROLL.BUILD"/>
   </category>
 
-  <category name="teamcity.err">
+  <category name="teamcity.err" additivity="false">
     <appender-ref ref="ROLL.BUILD"/>
   </category>
 
@@ -133,6 +133,21 @@ You might also need to increase the number of files to store to prevent logs fro
   <category name="javasvn.output">
     <!--<priority value="DEBUG"/>-->
     <appender-ref ref="SVN.LOG"/>
+  </category>
+
+  <category name="httpclient.wire.header" additivity="false">
+    <priority value="ERROR"/>
+    <appender-ref ref="ROLL"/>
+  </category>
+
+  <category name="httpclient.wire.content" additivity="false">
+    <priority value="ERROR"/>
+    <appender-ref ref="ROLL"/>
+  </category>
+
+  <category name="org.apache.commons.httpclient" additivity="false">
+    <priority value="ERROR"/>
+    <appender-ref ref="ROLL"/>
   </category>
 
   <root>

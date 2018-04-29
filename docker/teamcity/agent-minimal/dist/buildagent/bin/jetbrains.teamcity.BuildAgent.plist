@@ -24,6 +24,6 @@
 	<key>StandardErrorPath</key>
 	<string>logs/launchd.err.log</string>
 	<key>StandardOutPath</key>
-	<string>logs/launchd.out.log</string>
+	<string>/dev/null</string>
 </dict>
 </plist>

@@ -31,6 +31,7 @@ cd "$workingdir"
 if [ "$CONFIG_FILE" = "" ]; then
     CONFIG_FILE=../conf/buildAgent.properties
 fi
+# TODO: Read LOG_DIR from buildAgent.properties for Bundle compatibility
 if [ "$LOG_DIR" = "" ]; then
     LOG_DIR=../logs
 fi
@@ -124,9 +125,26 @@ exit1() {
   exit $1
 }
 
+java_exec=""
 need_java() {
+    java_hint=""
+    if [ -f '../conf/teamcity-agent.jvm' ]; then
+      java_hint="`head -n 1 '../conf/teamcity-agent.jvm'`"
+      if [ ! -z "$java_hint" ]; then
+        java_hint="`dirname \"$java_hint\"`"
+        java_hint="`dirname \"$java_hint\"`"
+      fi
+    fi
+    if [ -z "$java_hint" ] || [ ! -d "$java_hint" ]; then
+      java_hint=""
+    fi
+
     . ./findJava.sh
-    find_java "`pwd`/../jre" "`pwd`/../../jre";
+    FJ_MIN_UNSUPPORTED_JAVA_VERSION=9
+    FJ_LOOK_FOR_X86_JAVA=1
+    find_java 1.8 "$java_hint" "`pwd`/../jre" "`pwd`/../../jre" >/dev/null 2>&1
+    unset FJ_LOOK_FOR_X86_JAVA
+    find_java 1.5 "$java_hint" "`pwd`/../jre" "`pwd`/../../jre";
     if [ $? -ne 0 ]; then
         echo "Java not found. $1 Please ensure JDK or JRE is installed and JAVA_HOME environment variable points to it."
         if [ ! -z "$2" ]; then
@@ -134,6 +152,8 @@ need_java() {
         fi
         exit1 1
     fi
+    java_exec="$FJ_JAVA_EXEC"
+    unset FJ_JAVA_EXEC
 }
 
 case "$command_name" in
@@ -150,14 +170,12 @@ start|run)
 
         echo "Starting TeamCity build agent..."
 
-        . ./findJava.sh
-        find_java "`pwd`/../jre" "`pwd`/../../jre";
-        if [ $? -ne 0 ]; then
-          echo "Java not found. Cannot start TeamCity agent. Please ensure JDK or JRE is installed and JAVA_HOME environment variable points to it."
-          exit1 1
-        fi 
+        need_java "Cannot start TeamCity agent."
 
         mkdir -p $LOG_DIR 2>/dev/null
+
+        # Fix attributes for Mac service launcher (TW-49776)
+        chmod +x ../laundcher/bin/* 2>/dev/null
 
         if [ -f ../lib/latest/launcher.jar ]; then
             rm ../lib/launcher.jar
@@ -166,24 +184,24 @@ start|run)
         fi
 
         if [ "$TEAMCITY_AGENT_PREPARE_SCRIPT" != "" ]; then
-            "$TEAMCITY_AGENT_PREPARE_SCRIPT" $*
+            "$TEAMCITY_AGENT_PREPARE_SCRIPT" "$@"
         fi
 
-        "$JRE_HOME/bin/java" $TEAMCITY_LAUNCHER_OPTS_ACTUAL -cp $TEAMCITY_LAUNCHER_CLASSPATH jetbrains.buildServer.agent.Check $TEAMCITY_AGENT_OPTS_ACTUAL jetbrains.buildServer.agent.AgentMain -file $CONFIG_FILE
+        "$java_exec" $TEAMCITY_LAUNCHER_OPTS_ACTUAL -cp $TEAMCITY_LAUNCHER_CLASSPATH jetbrains.buildServer.agent.Check $TEAMCITY_AGENT_OPTS_ACTUAL jetbrains.buildServer.agent.AgentMain -file $CONFIG_FILE
         check_result="$?"
         if [ "$check_result" != "0" ]; then
            exit1 1;
         fi
 
         if [ "$command_name" = "start" ]; then
-          nohup "$JRE_HOME/bin/java" $TEAMCITY_LAUNCHER_OPTS_ACTUAL -cp $TEAMCITY_LAUNCHER_CLASSPATH jetbrains.buildServer.agent.Launcher $TEAMCITY_AGENT_OPTS_ACTUAL jetbrains.buildServer.agent.AgentMain -file $CONFIG_FILE > "$LOG_DIR/output.log" 2> "$LOG_DIR/error.log" &
+          nohup "$java_exec" $TEAMCITY_LAUNCHER_OPTS_ACTUAL -cp $TEAMCITY_LAUNCHER_CLASSPATH jetbrains.buildServer.agent.Launcher $TEAMCITY_AGENT_OPTS_ACTUAL jetbrains.buildServer.agent.AgentMain -file $CONFIG_FILE > "$LOG_DIR/output.log" 2> "$LOG_DIR/error.log" &
           launcher_pid=$!
           echo $launcher_pid > $PID_FILE
 
           echo "Done [$launcher_pid], see log at `cd $LOG_DIR && pwd`/teamcity-agent.log"
 
         else
-          "$JRE_HOME/bin/java" $TEAMCITY_LAUNCHER_OPTS_ACTUAL -cp $TEAMCITY_LAUNCHER_CLASSPATH jetbrains.buildServer.agent.Launcher $TEAMCITY_AGENT_OPTS_ACTUAL jetbrains.buildServer.agent.AgentMain -file $CONFIG_FILE
+          "$java_exec" $TEAMCITY_LAUNCHER_OPTS_ACTUAL -cp $TEAMCITY_LAUNCHER_CLASSPATH jetbrains.buildServer.agent.Launcher $TEAMCITY_AGENT_OPTS_ACTUAL jetbrains.buildServer.agent.AgentMain -file $CONFIG_FILE
         fi
         ;;
 stop)
@@ -214,13 +232,8 @@ stop)
 
    else
         check_alive ;
-         
-        . ./findJava.sh
-        find_java "`pwd`/../jre" "`pwd`/../../jre";
-        if [ $? -ne 0 ]; then
-          echo "Java not found. Cannot stop TeamCity agent. Please ensure JDK or JRE is installed and JAVA_HOME environment variable points to it."
-          exit1 1
-        fi
+
+        need_java "Cannot stop TeamCity agent."
          
         LD_LIBRARY_PATH=$LD_LIBRARY_PATH:.
         export LD_LIBRARY_PATH
@@ -234,10 +247,10 @@ stop)
         fi
 
         if [ "$TEAMCITY_AGENT_PREPARE_SCRIPT" != "" ]; then
-            "$TEAMCITY_AGENT_PREPARE_SCRIPT" $*
+            "$TEAMCITY_AGENT_PREPARE_SCRIPT" "$@"
         fi
 
-        "$JRE_HOME/bin/java" $TEAMCITY_LAUNCHER_OPTS_ACTUAL -cp $TEAMCITY_LAUNCHER_CLASSPATH jetbrains.buildServer.agent.Stop -file $CONFIG_FILE $FORCE $TEAMCITY_AGENT_OPTS_ACTUAL
+        "$java_exec" $TEAMCITY_LAUNCHER_OPTS_ACTUAL -cp $TEAMCITY_LAUNCHER_CLASSPATH jetbrains.buildServer.agent.Stop -file $CONFIG_FILE $FORCE $TEAMCITY_AGENT_OPTS_ACTUAL
 
         check_result="$?"
         if [ "$check_result" != "0" ]; then
@@ -248,6 +261,9 @@ stop)
    fi
    ;;
 status)
+    if [ "$2" = "short" ]; then
+      QUIET=1
+    fi
     ## Simple pid file based checking.
     #if check_alive ; then
     #    echo "Build Agent running with pid [`cat $PID_FILE`]"
@@ -258,17 +274,20 @@ status)
     #fi
     need_java "Cannot check TeamCity agent status. " -1
 
-    echo "Checking TeamCity build agent status..."
+    if [ "$2" != "short" ]; then
+      echo "Checking TeamCity build agent status..."
+    fi
 
     if [ -f ../lib/latest/launcher.jar ]; then
         TEAMCITY_LAUNCHER_CLASSPATH="../lib/latest/launcher.jar"
     fi
 
     if [ "$TEAMCITY_AGENT_PREPARE_SCRIPT" != "" ]; then
-        "$TEAMCITY_AGENT_PREPARE_SCRIPT" $*
+        "$TEAMCITY_AGENT_PREPARE_SCRIPT" "$@"
     fi
 
-    "$JRE_HOME/bin/java" $TEAMCITY_LAUNCHER_OPTS_ACTUAL -cp $TEAMCITY_LAUNCHER_CLASSPATH jetbrains.buildServer.agent.Status -file $CONFIG_FILE $TEAMCITY_AGENT_OPTS_ACTUAL
+    TEAMCITY_CONFIGURATOR_JAR="../lib/agent-configurator.jar"
+    "$java_exec" $TEAMCITY_LAUNCHER_OPTS_ACTUAL -jar "$TEAMCITY_CONFIGURATOR_JAR" "$@" --agent-config-file "$CONFIG_FILE"
     exit1 $?
    ;;
 configure)
@@ -277,11 +296,11 @@ configure)
     echo "Configuring TeamCity build agent..."
 
     if [ "$TEAMCITY_AGENT_PREPARE_SCRIPT" != "" ]; then
-        "$TEAMCITY_AGENT_PREPARE_SCRIPT" $*
+        "$TEAMCITY_AGENT_PREPARE_SCRIPT" "$@"
     fi
 
     TEAMCITY_CONFIGURATOR_JAR="../lib/agent-configurator.jar"
-    "$JRE_HOME/bin/java" $TEAMCITY_LAUNCHER_OPTS_ACTUAL -jar "$TEAMCITY_CONFIGURATOR_JAR" $* --agent-config-file "$CONFIG_FILE"
+    "$java_exec" $TEAMCITY_LAUNCHER_OPTS_ACTUAL -jar "$TEAMCITY_CONFIGURATOR_JAR" "$@" --agent-config-file "$CONFIG_FILE"
     exit1 $?
     ;;
 *)

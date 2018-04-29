@@ -29,7 +29,8 @@ IF EXIST "%AGENT_UNINSTALLATION_HOME%\bin" (
   IF EXIST "%AGENT_UNINSTALLATION_HOME%\bin\agent.bat" (
     CALL agent.bat stop force
     ECHO Waiting the Agent is shutdown completely...
-    TIMEOUT /T 3 /nobreak
+    :: timeout is implemented using ping because standard timeout utility does not work in non interactive mode
+    ping 127.0.0.1 -n 15 >NUL
   ) ELSE (
     ECHO Could not find "%AGENT_UNINSTALLATION_HOME%\bin\agent.bat". Skip Agent shutdown
   )

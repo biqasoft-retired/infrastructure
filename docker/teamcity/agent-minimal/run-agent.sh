@@ -60,5 +60,10 @@ trap "${AGENT_DIST}/bin/agent.sh stop; exit 0;" SIGINT SIGTERM SIGHUP
 
 touch /root/anchor
 
+if [ "$DOCKER_IN_DOCKER" = "start" ] ; then
+ service docker start
+ echo "Docker daemon started"
+fi
+
 tail -qF ${LOG_DIR}/teamcity-agent.log /root/anchor &
 wait

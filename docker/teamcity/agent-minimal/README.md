@@ -1,7 +1,8 @@
 # base biqasoft/teamcity-agent-base
  
-1)  download from Teamcity server buildAgent.zip; then run
+1)  download from Teamcity server buildAgent.zip (e.g. wget `https://teamcity.nbakaev.com/update/buildAgent.zip`); then run
 ```
+rm -rf dist
 mkdir dist
 unzip buildAgent.zip -d dist/buildagent
 mv dist/buildagent/conf dist/buildagent/conf_dist

@@ -13,9 +13,13 @@
 :: TEAMCITY_AGENT_PREPARE_SCRIPT    name of a script to execute before start/stop
 ::
 :: ---------------------------------------------------------------------
+setlocal
 
 SET TEAMCITY_AGENT_CURRENT_DIR=%CD%
 cd /d %~dp0
+
+set QUIET=0
+IF ""%1"" == ""status"" if ""%2"" == ""short"" set QUIET=1
 
 IF not "%TEAMCITY_AGENT_CONFIG_FILE%" == "" goto config_file_set
 SET TEAMCITY_AGENT_CONFIG_FILE=..\conf\buildAgent.properties
@@ -38,14 +42,28 @@ SET TEAMCITY_AGENT_MEM_OPTS_ACTUAL=%TEAMCITY_AGENT_MEM_OPTS%
 SET TEAMCITY_AGENT_OPTS_ACTUAL=%TEAMCITY_AGENT_OPTS% -ea %TEAMCITY_AGENT_MEM_OPTS_ACTUAL% -Dlog4j.configuration=file:../conf/teamcity-agent-log4j.xml -Dteamcity_logs=%TEAMCITY_AGENT_LOG_DIR%
 SET TEAMCITY_LAUNCHER_OPTS_ACTUAL=%TEAMCITY_LAUNCHER_OPTS% -ea
 
-ECHO Looking for installed Java...
-if exist ..\jre SET JRE_HOME=%cd%\..\jre
-if exist ..\..\jre SET JRE_HOME=%cd%\..\..\jre
-CALL "%cd%\findJava.bat" "%cd%\..\jre" "%cd%\..\..\jre"
-IF NOT ERRORLEVEL 1 GOTO java_search_done
-ECHO Java not found. Cannot start TeamCity agent. Please ensure JDK or JRE is installed and JAVA_HOME environment variable points to it.
+IF NOT "%QUIET%"=="1" ECHO Looking for installed Java...
+set "java_hint=%cd%\..\jre"
+IF NOT EXIST ..\conf\teamcity-agent.jvm goto findJava
+set /p java_hint=< ..\conf\teamcity-agent.jvm
+call :dirname "%java_hint%" java_bin_dir
+call :dirname "%java_bin_dir%" java_hint
+set "java_bin_dir="
+
+:findJava
+set "FJ_MIN_UNSUPPORTED_JAVA_VERSION=9"
+set "FJ_LOOK_FOR_X86_JAVA=1"
+CALL "%cd%\findJava.bat" "1.6" "%java_hint%" "%cd%\..\jre" "%cd%\..\..\jre" 1>nul 2>nul
+IF ERRORLEVEL 0 GOTO java_search_done
+set "FJ_LOOK_FOR_X86_JAVA="
+CALL "%cd%\findJava.bat" "1.5" "%java_hint%" "%cd%\..\jre" "%cd%\..\..\jre"
+IF ERRORLEVEL 0 GOTO java_search_done
+IF NOT "%QUIET%"=="1" ECHO Java not found. Cannot start TeamCity agent. Please ensure JDK or JRE is installed and JAVA_HOME environment variable points to it.
 GOTO done
 :java_search_done
+
+SET TEAMCITY_AGENT_JAVA_EXEC=%FJ_JAVA_EXEC%
+SET "FJ_JAVA_EXEC="
 
 :run
 set TEAMCITY_LAUNCHER_CLASSPATH=..\launcher\lib\launcher.jar
@@ -56,10 +74,18 @@ if "%TEAMCITY_AGENT_PREPARE_SCRIPT%" == "" goto skip_prepare
 call "%TEAMCITY_AGENT_PREPARE_SCRIPT%" %*
 :skip_prepare
 
+SET QUIET=
 IF ""%1"" == ""start"" goto start
 IF ""%1"" == ""stop"" goto stop
 IF ""%1"" == ""status"" goto status
 IF ""%1"" == ""configure"" goto configure
+
+:dirname file varName
+    setlocal ENABLEEXTENSIONS ENABLEDELAYEDEXPANSION
+    SET _dir=%~dp1
+    SET _dir=%_dir:~0,-1%
+    endlocal & set %2=%_dir%
+goto:eof
 
 
 echo Error parsing command line.
@@ -81,24 +107,26 @@ del /Q ..\lib\launcher.jar
 move ..\lib\latest\launcher.jar ..\lib\launcher.jar
 
 :start_run
-"%JAVA_EXE%" %TEAMCITY_LAUNCHER_OPTS_ACTUAL% -cp %TEAMCITY_LAUNCHER_CLASSPATH% jetbrains.buildServer.agent.Check %TEAMCITY_AGENT_OPTS_ACTUAL% jetbrains.buildServer.agent.AgentMain -file %TEAMCITY_AGENT_CONFIG_FILE%
+"%TEAMCITY_AGENT_JAVA_EXEC%" %TEAMCITY_LAUNCHER_OPTS_ACTUAL% -cp %TEAMCITY_LAUNCHER_CLASSPATH% jetbrains.buildServer.agent.Check %TEAMCITY_AGENT_OPTS_ACTUAL% jetbrains.buildServer.agent.AgentMain -file %TEAMCITY_AGENT_CONFIG_FILE%
 IF ERRORLEVEL 1 goto done
-start "TeamCity Build Agent" "%JAVA_EXE%" %TEAMCITY_LAUNCHER_OPTS_ACTUAL% -cp %TEAMCITY_LAUNCHER_CLASSPATH% jetbrains.buildServer.agent.Launcher %TEAMCITY_AGENT_OPTS_ACTUAL% jetbrains.buildServer.agent.AgentMain -file %TEAMCITY_AGENT_CONFIG_FILE%
+start "TeamCity Build Agent" "%TEAMCITY_AGENT_JAVA_EXEC%" %TEAMCITY_LAUNCHER_OPTS_ACTUAL% -cp %TEAMCITY_LAUNCHER_CLASSPATH% jetbrains.buildServer.agent.Launcher %TEAMCITY_AGENT_OPTS_ACTUAL% jetbrains.buildServer.agent.AgentMain -file %TEAMCITY_AGENT_CONFIG_FILE%
 goto done
 
 :stop
-"%JAVA_EXE%" %TEAMCITY_LAUNCHER_OPTS_ACTUAL% -cp %TEAMCITY_LAUNCHER_CLASSPATH% jetbrains.buildServer.agent.Stop %TEAMCITY_AGENT_OPTS_ACTUAL% -file %TEAMCITY_AGENT_CONFIG_FILE% %2
+"%TEAMCITY_AGENT_JAVA_EXEC%" %TEAMCITY_LAUNCHER_OPTS_ACTUAL% -cp %TEAMCITY_LAUNCHER_CLASSPATH% jetbrains.buildServer.agent.Stop %TEAMCITY_AGENT_OPTS_ACTUAL% -file %TEAMCITY_AGENT_CONFIG_FILE% %2
 goto done
 
 :status
-"%JAVA_EXE%" %TEAMCITY_LAUNCHER_OPTS_ACTUAL% -cp %TEAMCITY_LAUNCHER_CLASSPATH% jetbrains.buildServer.agent.Status %TEAMCITY_AGENT_OPTS_ACTUAL% -file %TEAMCITY_AGENT_CONFIG_FILE% %2
+set TEAMCITY_CONFIGURATOR_JAR=..\lib\agent-configurator.jar
+"%TEAMCITY_AGENT_JAVA_EXEC%" %TEAMCITY_LAUNCHER_OPTS_ACTUAL% -jar %TEAMCITY_CONFIGURATOR_JAR% %* --agent-config-file %TEAMCITY_AGENT_CONFIG_FILE%
 goto done
 
 :configure
 set TEAMCITY_CONFIGURATOR_JAR=..\lib\agent-configurator.jar
-"%JAVA_EXE%" %TEAMCITY_LAUNCHER_OPTS_ACTUAL% -jar %TEAMCITY_CONFIGURATOR_JAR% %* --agent-config-file %TEAMCITY_AGENT_CONFIG_FILE%
+"%TEAMCITY_AGENT_JAVA_EXEC%" %TEAMCITY_LAUNCHER_OPTS_ACTUAL% -jar %TEAMCITY_CONFIGURATOR_JAR% %* --agent-config-file %TEAMCITY_AGENT_CONFIG_FILE%
 goto done
 
 :done
 
+set "TEAMCITY_AGENT_JAVA_EXEC="
 cd /d %TEAMCITY_AGENT_CURRENT_DIR%

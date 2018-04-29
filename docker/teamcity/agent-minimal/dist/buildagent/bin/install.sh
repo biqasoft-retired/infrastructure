@@ -29,7 +29,8 @@ fi
 echo "Looking for Java Runtime Environment..."
 chmod +x findJava.sh
 . ./findJava.sh
-find_java "`pwd`/../jre" ;
+FJ_MIN_UNSUPPORTED_JAVA_VERSION=9
+find_java 1.6 "`pwd`/../jre" ;
 if [ $? -ne 0 ]; then
   echo "Cannot install the Agent due to JRE is not found. Please install JRE or JDK first."
   exit 1
