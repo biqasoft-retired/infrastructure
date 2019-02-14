@@ -272,6 +272,10 @@ find_java() {
 
   FJ_DEBUG_INDENT="  "
 
+  if [ -n "$FJ_SKIP_ALL_EXCEPT_ARGS" ]; then
+     return 2
+  fi
+
   # Check JRE_HOME
   if [ -n "$FJ_DEBUG" ]; then echo "[`date +%T`] Checking JRE_HOME: $JRE_HOME" 1>&2; fi
   check_dir "$JRE_HOME"

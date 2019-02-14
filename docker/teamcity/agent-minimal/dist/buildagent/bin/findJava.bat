@@ -382,16 +382,21 @@ rem Check directories passed as parameters
 if not "!FJ_DEBUG!" == "" echo [!TIME!] Checking directories passed as parameters 1>&2
 endlocal
 set "FJ_ALL_CUSTOM_DIRS="
+:: -1 to ignore first argument
+set "FJ_CUSTOM_DIRS_ARGC=-1"
+for %%x in (%*) do set /A FJ_CUSTOM_DIRS_ARGC+=1
 setlocal enabledelayedexpansion
 :params_loop
+  if !FJ_CUSTOM_DIRS_ARGC! LEQ 0 goto params_loop_end
   shift
 
   endlocal
   set "FJ_CUSTOM_DIR=%~1"
   set "FJ_CUSTOM_DIR_PATH=%~df1"
+  set /A FJ_CUSTOM_DIRS_ARGC-=1
   setlocal enabledelayedexpansion
 
-  if "!FJ_CUSTOM_DIR!" == "" goto params_loop_end
+  if "!FJ_CUSTOM_DIR!" == "" goto params_loop
 
   if not "!FJ_ALL_CUSTOM_DIRS!" == "" set "FJ_ALL_CUSTOM_DIRS=!FJ_ALL_CUSTOM_DIRS!, "
   set "FJ_ALL_CUSTOM_DIRS=!FJ_ALL_CUSTOM_DIRS!^"!FJ_CUSTOM_DIR_PATH!^""
@@ -408,8 +413,11 @@ setlocal enabledelayedexpansion
 :params_loop_end
 
 endlocal
+set "FJ_CUSTOM_DIRS_ARGC="
 set "FJ_DEBUG_INDENT=  "
 setlocal enabledelayedexpansion
+
+if not "!FJ_SKIP_ALL_EXCEPT_ARGS!" == "" goto skip_all
 
 rem Check JRE_HOME
 if not "!FJ_DEBUG!" == "" echo [!TIME!] Checking JRE_HOME: !JRE_HOME! 1>&2
@@ -483,6 +491,8 @@ for /f %%i in ("java.exe") do (
   call "!FJ_SCRIPT!" fun check_java "!II!" <nul
   if "!ERRORLEVEL!" == "0" goto exit_ok
 )
+
+:skip_all
 
 rem Report 'no Java found'
 echo. 1>&2

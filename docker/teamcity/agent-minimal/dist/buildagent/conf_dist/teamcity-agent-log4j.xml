@@ -12,7 +12,7 @@ You might also need to increase the number of files to store to prevent logs fro
   <appender name="CONSOLE-INFO" class="org.apache.log4j.ConsoleAppender">
     <param name="target" value="System.out"/>
     <layout class="jetbrains.buildServer.log.MessagesFilterLayout">
-      <param name="ConversionPattern" value="[%d] %6p - %30.30c - %m %n"/>
+      <param name="ConversionPattern" value="[%d] %6p - %30.30c - %m%n"/>
     </layout>
     <filter class="org.apache.log4j.varia.LevelRangeFilter">
       <param name="LevelMax" value="INFO"/>
@@ -22,7 +22,7 @@ You might also need to increase the number of files to store to prevent logs fro
   <appender name="CONSOLE-WARN" class="org.apache.log4j.ConsoleAppender">
     <param name="target" value="System.err"/>
     <layout class="jetbrains.buildServer.log.MessagesFilterLayout">
-      <param name="ConversionPattern" value="[%d] %6p - %30.30c - %m %n"/>
+      <param name="ConversionPattern" value="[%d] %6p - %30.30c - %m%n"/>
     </layout>
     <filter class="org.apache.log4j.varia.LevelRangeFilter">
       <param name="LevelMin" value="WARN"/>
@@ -36,7 +36,7 @@ You might also need to increase the number of files to store to prevent logs fro
     <!-- <param name="maxBackupIndex" value="20"/> -->
 
     <layout class="jetbrains.buildServer.log.MessagesFilterLayout">
-      <param name="ConversionPattern" value="[%d] %6p - %30.30c - %m %n"/>
+      <param name="ConversionPattern" value="[%d] %6p - %30.30c - %m%n"/>
     </layout>
 
     <filter class="jetbrains.buildServer.log.CategoryFilter">
@@ -58,7 +58,7 @@ You might also need to increase the number of files to store to prevent logs fro
     <param name="file" value="${teamcity_logs}/teamcity-svn.log"/>
 
     <layout class="jetbrains.buildServer.log.MessagesFilterLayout">
-      <param name="ConversionPattern" value="[%d] %6p - %30.30c - %m %n"/>
+      <param name="ConversionPattern" value="[%d] %6p - %30.30c - %m%n"/>
     </layout>
   </appender>
 
@@ -69,7 +69,7 @@ You might also need to increase the number of files to store to prevent logs fro
     <!-- <param name="maxBackupIndex" value="20"/> -->
 
     <layout class="jetbrains.buildServer.log.MessagesFilterLayout">
-      <param name="ConversionPattern" value="[%d] %6p - %30.30c - %m %n"/>
+      <param name="ConversionPattern" value="[%d] %6p - %30.30c - %m%n"/>
     </layout>
 
     <filter class="org.apache.log4j.varia.LevelRangeFilter">
@@ -84,7 +84,7 @@ You might also need to increase the number of files to store to prevent logs fro
     <!-- <param name="maxBackupIndex" value="20"/> -->
 
     <layout class="jetbrains.buildServer.log.MessagesFilterLayout">
-      <param name="ConversionPattern" value="[%d] %6p - %30.30c - %m %n"/>
+      <param name="ConversionPattern" value="[%d] %6p - %30.30c - %m%n"/>
     </layout>
   </appender>
 
@@ -95,7 +95,7 @@ You might also need to increase the number of files to store to prevent logs fro
     <!-- <param name="maxBackupIndex" value="20"/> -->
 
     <layout class="jetbrains.buildServer.log.MessagesFilterLayout">
-      <param name="ConversionPattern" value="[%d] %6p - %m %n"/>
+      <param name="ConversionPattern" value="[%d] %6p - %m%n"/>
     </layout>
   </appender>
 

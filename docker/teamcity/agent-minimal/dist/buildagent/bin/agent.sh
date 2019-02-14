@@ -14,6 +14,8 @@
 #
 # TEAMCITY_AGENT_OPTS       Set additional agent JVM options
 #
+# TEAMCITY_LAUNCHER_MEM_OPTS    Set agent launcher memory options (JVM options)
+#
 # TEAMCITY_LAUNCHER_OPTS    Set agent launcher JVM options
 #
 # TEAMCITY_AGENT_PREPARE_SCRIPT    name of a script to execute before start/stop
@@ -45,8 +47,15 @@ fi
 # uncomment for debugging OOM errors:
 #    TEAMCITY_AGENT_MEM_OPTS_ACTUAL="$TEAMCITY_AGENT_MEM_OPTS_ACTUAL -XX:+HeapDumpOnOutOfMemoryError"
 
-TEAMCITY_LAUNCHER_OPTS_ACTUAL="-ea $TEAMCITY_LAUNCHER_OPTS"
 TEAMCITY_AGENT_OPTS_ACTUAL="$TEAMCITY_AGENT_OPTS -ea $TEAMCITY_AGENT_MEM_OPTS_ACTUAL -Dteamcity_logs=$LOG_DIR/"
+
+TEAMCITY_LAUNCHER_MEM_OPTS_ACTUAL="$TEAMCITY_LAUNCHER_MEM_OPTS"
+
+if [ "$TEAMCITY_LAUNCHER_MEM_OPTS_ACTUAL" = "" ]; then
+    TEAMCITY_LAUNCHER_MEM_OPTS_ACTUAL="-Xms16m -Xmx64m"
+fi
+
+TEAMCITY_LAUNCHER_OPTS_ACTUAL="-ea $TEAMCITY_LAUNCHER_OPTS $TEAMCITY_LAUNCHER_MEM_OPTS_ACTUAL"
 
 if [ -f ../conf/teamcity-agent-log4j.xml ]; then
     TEAMCITY_AGENT_OPTS_ACTUAL="$TEAMCITY_AGENT_OPTS_ACTUAL -Dlog4j.configuration=file:../conf/teamcity-agent-log4j.xml"
@@ -126,6 +135,7 @@ exit1() {
 }
 
 java_exec=""
+QUIET=0
 need_java() {
     java_hint=""
     if [ -f '../conf/teamcity-agent.jvm' ]; then
@@ -140,20 +150,34 @@ need_java() {
     fi
 
     . ./findJava.sh
-    FJ_MIN_UNSUPPORTED_JAVA_VERSION=9
+    FJ_MIN_UNSUPPORTED_JAVA_VERSION=11
+    FJ_SKIP_ALL_EXCEPT_ARGS=1
+    # First search only among specified directories
+    find_java 1.6 "$TEAMCITY_JRE" "$java_hint" "`pwd`/../jre" "`pwd`/../../jre" >/dev/null 2>&1
+    unset FJ_SKIP_ALL_EXCEPT_ARGS
     FJ_LOOK_FOR_X86_JAVA=1
-    find_java 1.8 "$java_hint" "`pwd`/../jre" "`pwd`/../../jre" >/dev/null 2>&1
+    # Then in all other possible locations for 32bit java 1.8+, arguments are required there as it's covered in previous attempt
+    find_java 1.8 >/dev/null 2>&1
     unset FJ_LOOK_FOR_X86_JAVA
-    find_java 1.5 "$java_hint" "`pwd`/../jre" "`pwd`/../../jre";
+    # Then in all other possible locations for any bitness
+    find_java 1.5 "$TEAMCITY_JRE" "$java_hint" "`pwd`/../jre" "`pwd`/../../jre";
     if [ $? -ne 0 ]; then
-        echo "Java not found. $1 Please ensure JDK or JRE is installed and JAVA_HOME environment variable points to it."
+        if [ "$QUIET" -eq 0 ]; then
+          echo "Java not found. $1 Please ensure JDK or JRE is installed and JAVA_HOME environment variable points to it."
+        fi
         if [ ! -z "$2" ]; then
           exit1 $2
         fi
         exit1 1
     fi
     java_exec="$FJ_JAVA_EXEC"
+    if [ "$QUIET" -eq 0 ]; then
+      echo "Java executable is found: '$FJ_JAVA_EXEC'"
+    fi
+    # Cleanup env
     unset FJ_JAVA_EXEC
+    unset FJ_JAVA_VERSION
+    unset FJ_MIN_UNSUPPORTED_JAVA_VERSION
 }
 
 case "$command_name" in
@@ -174,8 +198,8 @@ start|run)
 
         mkdir -p $LOG_DIR 2>/dev/null
 
-        # Fix attributes for Mac service launcher (TW-49776)
-        chmod +x ../laundcher/bin/* 2>/dev/null
+        # Fix attributes for Mac service launcher (TW-49776, TW-57312)
+        chmod +x ../launcher/bin/* 2>/dev/null
 
         if [ -f ../lib/latest/launcher.jar ]; then
             rm ../lib/launcher.jar
